@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "es2025",
+    "lib": [
+      "es2025"
+    ],
+    "forceConsistentCasingInFileNames": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "types": [
+      "node"
+    ],
+    "esModuleInterop": true,
+  },
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
