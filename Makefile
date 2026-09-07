@@ -1,7 +1,9 @@
 PYTHON=python3
 
-.PHONY: install dev run check clean
+.PHONY: venv install dev run check clean
 
+venv:
+	$(PYTHON) -m venv venv
 install:
 	$(PYTHON) -m pip install -e .
 
