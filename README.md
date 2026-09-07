@@ -32,4 +32,3 @@ Run a basic Python compilation check:
 ```bash
 make check
 ```
-
