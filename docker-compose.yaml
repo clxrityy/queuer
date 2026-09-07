@@ -1,0 +1,19 @@
+services:
+  question-queuer:
+    image: question-queuer:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - BOT_CLIENT_ID=${BOT_CLIENT_ID}
+      - BOT_APPLICATION_ID=${BOT_APPLICATION_ID}
+      - GUILD_ID=${GUILD_ID}
+      - ENV=${ENV}
+      - DATABASE_PATH=${DATABASE_PATH}
+      - DEFAULT_TIMEZONE=${DEFAULT_TIMEZONE}
+    volumes:
+      - ./data:/bot/data
+    restart: unless-stopped
