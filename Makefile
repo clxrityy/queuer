@@ -12,7 +12,7 @@ dev:
 	$(PYTHON) -m pip install -e .[dev]
 
 run:
-	$(PYTHON) -m queuer
+	PYTHONPATH=src $(PYTHON) -m queuer
 
 check:
 	$(PYTHON) -m compileall src
