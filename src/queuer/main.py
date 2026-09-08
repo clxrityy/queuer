@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from .bot import QueuerBot, register_commands
 from .config import load_config
 from .db import Database
+from .discord import QueuerBot, register_commands
 from .logging import configure_logging
 from .repositories import (
     GuildSettingsRepository,
