@@ -38,7 +38,7 @@ def build_error_embed(
     error: app_commands.AppCommandError,
 ) -> discord.Embed:
     title = "Command Error"
-    snippet = str(error) or error.__class__.__name__
+    snippet = "The command could not be completed. Please try again later."
 
     if isinstance(error, app_commands.CommandOnCooldown):
         title = "Command On Cooldown"
@@ -55,7 +55,7 @@ def build_error_embed(
     elif isinstance(error, app_commands.CommandInvokeError):
         original = error.original
         title = f"{original.__class__.__name__}"
-        snippet = str(original) or "The command raised an unexpected runtime error."
+        snippet = "The command raised an unexpected runtime error."
     elif isinstance(error, app_commands.TransformerError):
         title = "Invalid Input"
         snippet = str(error) or "One or more command values could not be parsed."
