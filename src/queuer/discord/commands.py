@@ -42,7 +42,7 @@ def register_commands(bot: QueuerBot) -> None:
         error: app_commands.AppCommandError,
     ) -> None:
         command_name = interaction.command.qualified_name if interaction.command else None
-        LOGGER.exception(
+        LOGGER.error(
             "App command error for %s\n%s",
             command_name or "unknown",
             format_log_snippet(error),
