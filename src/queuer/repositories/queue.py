@@ -22,7 +22,6 @@ class QueueRepository:
         target_user_id: int | None,
         approved_by_user_id: int,
     ) -> QueueItem:
-        position = await self._next_position(guild_id)
         async with self.database.connection() as connection:
             cursor = await connection.execute(
                 """
@@ -30,7 +29,10 @@ class QueueRepository:
                     guild_id, draft_id, status, type, prompt_text, payload_json,
                     target_user_id, created_by_user_id, approved_by_user_id, approved_at, position
                 )
-                VALUES (?, ?, 'queued', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+                SELECT ?, ?, 'queued', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP,
+                       COALESCE(MAX(position), 0) + 1
+                FROM queue_items
+                WHERE guild_id = ?
                 """,
                 (
                     guild_id,
@@ -41,7 +43,7 @@ class QueueRepository:
                     target_user_id,
                     creator_user_id,
                     approved_by_user_id,
-                    position,
+                    guild_id,
                 ),
             )
             await connection.commit()
@@ -128,6 +130,10 @@ class QueueRepository:
         ]
 
     async def mark_pending_reconfirmation(self, queue_item_id: int, payload: dict[str, object], prompt_text: str) -> None:
+        cleaned_prompt_text = prompt_text.strip()
+        if not cleaned_prompt_text:
+            raise ValueError("Queue item prompt_text cannot be empty")
+
         async with self.database.connection() as connection:
             await connection.execute(
                 """
@@ -140,16 +146,6 @@ class QueueRepository:
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """,
-                (json.dumps(payload), prompt_text, queue_item_id),
+                (json.dumps(payload), cleaned_prompt_text, queue_item_id),
             )
             await connection.commit()
-
-    async def _next_position(self, guild_id: int) -> int:
-        async with self.database.connection() as connection:
-            cursor = await connection.execute(
-                "SELECT COALESCE(MAX(position), 0) + 1 AS next_position FROM queue_items WHERE guild_id = ?",
-                (guild_id,),
-            )
-            row = await cursor.fetchone()
-        next_position = row["next_position"] if row is not None else 1
-        return int(next_position)
