@@ -182,6 +182,9 @@ class QuestionDraftRepository:
             await connection.commit()
             draft_id = cursor.lastrowid
 
+        if draft_id is None:
+            raise RuntimeError("Draft creation succeeded but no draft ID was returned")
+
         draft = await self.get(draft_id)
         if draft is None:
             raise RuntimeError("Draft creation succeeded but the draft could not be reloaded")
@@ -319,6 +322,9 @@ class QueueRepository:
             await connection.commit()
             queue_item_id = cursor.lastrowid
 
+        if queue_item_id is None:
+            raise RuntimeError("Queue item creation succeeded but no row ID was returned")
+
         queue_item = await self.get(queue_item_id)
         if queue_item is None:
             raise RuntimeError("Queue item creation succeeded but the item could not be reloaded")
@@ -420,4 +426,5 @@ class QueueRepository:
                 (guild_id,),
             )
             row = await cursor.fetchone()
-        return int(row["next_position"])
+        next_position = row["next_position"] if row is not None else 1
+        return int(next_position)
