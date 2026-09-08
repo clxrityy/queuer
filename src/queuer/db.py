@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import aiosqlite
@@ -111,16 +113,34 @@ CREATE TABLE IF NOT EXISTS member_selection_history (
 
 
 async def initialize_database(database_path: Path, guild_id: int, default_timezone: str) -> None:
-    database_path.parent.mkdir(parents=True, exist_ok=True)
+    database = Database(database_path)
+    await database.initialize(guild_id=guild_id, default_timezone=default_timezone)
 
-    async with aiosqlite.connect(database_path) as connection:
-        await connection.executescript(SCHEMA_SQL)
-        await connection.execute(
-            """
-            INSERT INTO guild_settings (guild_id, timezone)
-            VALUES (?, ?)
-            ON CONFLICT(guild_id) DO NOTHING
-            """,
-            (guild_id, default_timezone),
-        )
-        await connection.commit()
+
+class Database:
+    def __init__(self, database_path: Path) -> None:
+        self.database_path = database_path
+
+    @asynccontextmanager
+    async def connection(self) -> AsyncGenerator[aiosqlite.Connection]:
+        self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        connection = await aiosqlite.connect(self.database_path)
+        connection.row_factory = aiosqlite.Row
+        try:
+            await connection.execute("PRAGMA foreign_keys = ON")
+            yield connection
+        finally:
+            await connection.close()
+
+    async def initialize(self, *, guild_id: int, default_timezone: str) -> None:
+        async with self.connection() as connection:
+            await connection.executescript(SCHEMA_SQL)
+            await connection.execute(
+                """
+                INSERT INTO guild_settings (guild_id, timezone)
+                VALUES (?, ?)
+                ON CONFLICT(guild_id) DO NOTHING
+                """,
+                (guild_id, default_timezone),
+            )
+            await connection.commit()

@@ -17,7 +17,7 @@ For editable development installs:
 make dev
 ```
 
-## Run
+### Run
 
 The bot reads configuration from `.env` and initializes the SQLite database automatically on startup.
 
@@ -25,11 +25,39 @@ The bot reads configuration from `.env` and initializes the SQLite database auto
 make run
 ```
 
-## Check
+### Docker
+
+1. Copy `.env.example` to `.env` and fill in the Discord values.
+1. Build the image:
+
+```bash
+make docker-build
+```
+
+1. Start the bot container:
+
+```bash
+make docker-up
+```
+
+SQLite data is persisted in `./data` on the host.
+
+To follow logs:
+
+```bash
+make docker-logs
+```
+
+To stop the container:
+
+```bash
+make docker-down
+```
+
+### Check
 
 Run a basic Python compilation check:
 
 ```bash
 make check
 ```
-
