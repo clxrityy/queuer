@@ -88,6 +88,7 @@ class QuestionDraftRepository:
                 WHERE guild_id = ?
                   AND creator_user_id = ?
                   AND status IN ('draft', 'awaiting_confirmation')
+                                    AND expires_at > CURRENT_TIMESTAMP
                 ORDER BY updated_at DESC
                 LIMIT 1
                 """,
