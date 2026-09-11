@@ -19,15 +19,22 @@ def build_snippet_embed(
     snippet: str,
     language: str = "text",
     color: discord.Color,
+    render_as_code_block: bool = True,
+    field_name: str = "Snippet",
 ) -> discord.Embed:
     embed = discord.Embed(
         title=title,
         description=description,
         color=color,
     )
+    field_value = (
+        f"```{language}\n{truncate_snippet(snippet)}\n```"
+        if render_as_code_block
+        else truncate_snippet(snippet)
+    )
     embed.add_field(
-        name="Snippet",
-        value=f"```{language}\n{truncate_snippet(snippet)}\n```",
+        name=field_name,
+        value=field_value,
         inline=False,
     )
     return embed

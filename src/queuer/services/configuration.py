@@ -32,7 +32,7 @@ class ConfigurationService:
             "roles": roles_by_purpose,
         }
 
-    async def set_qotd_channel(self, guild_id: int, channel_id: int) -> None:
+    async def set_qotd_channel(self, guild_id: int, channel_id: int | None) -> None:
         await self.settings_repository.update_qotd_channel(guild_id, channel_id)
 
     async def set_schedule(self, guild_id: int, schedule_time: str, timezone: str, enabled: bool) -> None:
