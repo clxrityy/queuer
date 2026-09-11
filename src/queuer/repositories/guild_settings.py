@@ -35,7 +35,7 @@ class GuildSettingsRepository:
             updated_at=row["updated_at"],
         )
 
-    async def update_qotd_channel(self, guild_id: int, channel_id: int) -> None:
+    async def update_qotd_channel(self, guild_id: int, channel_id: int | None) -> None:
         await self._update_fields(guild_id, {"qotd_channel_id": channel_id})
 
     async def update_schedule(

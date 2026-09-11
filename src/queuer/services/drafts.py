@@ -12,6 +12,9 @@ class DraftService:
     def __init__(self, draft_repository: QuestionDraftRepository) -> None:
         self.draft_repository = draft_repository
 
+    async def get_active(self, guild_id: int, creator_user_id: int) -> QuestionDraft | None:
+        return await self.draft_repository.get_active_for_creator(guild_id, creator_user_id)
+
     async def begin_or_resume(self, guild_id: int, creator_user_id: int, *, ttl_minutes: int = 60) -> QuestionDraft:
         draft = await self.draft_repository.get_active_for_creator(guild_id, creator_user_id)
         if draft is not None:
