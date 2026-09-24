@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Optional
 
 import discord
 from discord import app_commands
@@ -32,7 +33,7 @@ def register_admin_commands(bot: QueuerBot) -> None:
     @app_commands.describe(channel="Leave empty to clear the configured QOTD channel.")
     async def qotd_set_channel(
         interaction: discord.Interaction,
-        channel: discord.TextChannel | None = None,
+        channel: Optional[discord.TextChannel] = None,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         await ensure_admin_access(bot, interaction)
