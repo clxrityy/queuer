@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 import discord
 from discord import app_commands
@@ -18,7 +18,7 @@ QUESTION_TYPE_CHOICES = [
 ]
 
 
-def parse_options(raw_options: str | None) -> list[str]:
+def parse_options(raw_options: Optional[str]) -> list[str]:
     if raw_options is None:
         return []
 
@@ -75,8 +75,8 @@ def register_qotd_commands(bot: QueuerBot) -> None:
         interaction: discord.Interaction,
         question_type: app_commands.Choice[str],
         prompt: str,
-        options: str | None = None,
-        target_user: discord.Member | None = None,
+        options: Optional[str] = None,
+        target_user: Optional[discord.Member] = None,
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         await ensure_contributor_access(bot, interaction)
