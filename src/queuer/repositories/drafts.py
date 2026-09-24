@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from typing import Optional
 
 from ..db import Database
 from ..models import QuestionDraft
@@ -50,7 +51,7 @@ class QuestionDraftRepository:
             raise RuntimeError("Draft creation succeeded but the draft could not be reloaded")
         return draft
 
-    async def get(self, draft_id: int) -> QuestionDraft | None:
+    async def get(self, draft_id: int) -> Optional[QuestionDraft]:
         async with self.database.connection() as connection:
             cursor = await connection.execute(
                 """
@@ -78,7 +79,7 @@ class QuestionDraftRepository:
             updated_at=row["updated_at"],
         )
 
-    async def get_active_for_creator(self, guild_id: int, creator_user_id: int) -> QuestionDraft | None:
+    async def get_active_for_creator(self, guild_id: int, creator_user_id: int) -> Optional[QuestionDraft]:
         async with self.database.connection() as connection:
             cursor = await connection.execute(
                 """

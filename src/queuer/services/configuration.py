@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import Optional
 
 from ..repositories import GuildSettingsRepository, RoleAssignmentRepository
 
@@ -32,7 +33,7 @@ class ConfigurationService:
             "roles": roles_by_purpose,
         }
 
-    async def set_qotd_channel(self, guild_id: int, channel_id: int | None) -> None:
+    async def set_qotd_channel(self, guild_id: int, channel_id: Optional[int]) -> None:
         await self.settings_repository.update_qotd_channel(guild_id, channel_id)
 
     async def set_schedule(self, guild_id: int, schedule_time: str, timezone: str, enabled: bool) -> None:
@@ -43,7 +44,7 @@ class ConfigurationService:
             enabled=enabled,
         )
 
-    async def set_reminder_interval(self, guild_id: int, interval_minutes: int | None) -> None:
+    async def set_reminder_interval(self, guild_id: int, interval_minutes: Optional[int]) -> None:
         await self.settings_repository.update_reminder_interval(guild_id, interval_minutes)
 
     async def replace_admin_roles(self, guild_id: int, role_ids: list[int]) -> None:

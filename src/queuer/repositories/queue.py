@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Optional
 
 from ..db import Database
 from ..models import QueueItem
@@ -19,7 +20,7 @@ class QueueRepository:
         question_type: str,
         prompt_text: str,
         payload: dict[str, object],
-        target_user_id: int | None,
+        target_user_id: Optional[int],
         approved_by_user_id: int,
     ) -> QueueItem:
         async with self.database.connection() as connection:
@@ -57,7 +58,7 @@ class QueueRepository:
             raise RuntimeError("Queue item creation succeeded but the item could not be reloaded")
         return queue_item
 
-    async def get(self, queue_item_id: int) -> QueueItem | None:
+    async def get(self, queue_item_id: int) -> Optional[QueueItem]:
         async with self.database.connection() as connection:
             cursor = await connection.execute(
                 """
@@ -91,7 +92,7 @@ class QueueRepository:
             updated_at=row["updated_at"],
         )
 
-    async def list_for_guild(self, guild_id: int, *, status: str | None = None) -> list[QueueItem]:
+    async def list_for_guild(self, guild_id: int, *, status: Optional[str] = None) -> list[QueueItem]:
         query = """
             SELECT id, guild_id, draft_id, status, type, prompt_text, payload_json,
                    target_user_id, created_by_user_id, approved_by_user_id, approved_at,

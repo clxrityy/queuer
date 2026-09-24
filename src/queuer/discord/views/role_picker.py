@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from typing import Optional
 
 import discord
 
@@ -65,7 +66,7 @@ class RoleSelectionView(discord.ui.View):
         self.available_roles = available_roles
         self.selected_role_ids = current_role_ids & {role.id for role in available_roles}
         self.page = 0
-        self.message: discord.InteractionMessage | None = None
+        self.message: Optional[discord.InteractionMessage] = None
         self.refresh_picker()
 
     @property
@@ -85,7 +86,7 @@ class RoleSelectionView(discord.ui.View):
 
     def disable_controls(self) -> None:
         for child in self.children:
-            if isinstance(child, discord.ui.Button | discord.ui.Select):
+            if isinstance(child, (discord.ui.Button, discord.ui.Select)):
                 child.disabled = True
 
     def build_embed(self, description: str) -> discord.Embed:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from ..db import Database
 from ..models import GuildSettings
 
@@ -8,7 +10,7 @@ class GuildSettingsRepository:
     def __init__(self, database: Database) -> None:
         self.database = database
 
-    async def get(self, guild_id: int) -> GuildSettings | None:
+    async def get(self, guild_id: int) -> Optional[GuildSettings]:
         async with self.database.connection() as connection:
             cursor = await connection.execute(
                 """
@@ -35,7 +37,7 @@ class GuildSettingsRepository:
             updated_at=row["updated_at"],
         )
 
-    async def update_qotd_channel(self, guild_id: int, channel_id: int | None) -> None:
+    async def update_qotd_channel(self, guild_id: int, channel_id: Optional[int]) -> None:
         await self._update_fields(guild_id, {"qotd_channel_id": channel_id})
 
     async def update_schedule(
@@ -55,7 +57,7 @@ class GuildSettingsRepository:
             },
         )
 
-    async def update_reminder_interval(self, guild_id: int, interval_minutes: int | None) -> None:
+    async def update_reminder_interval(self, guild_id: int, interval_minutes: Optional[int]) -> None:
         await self._update_fields(guild_id, {"reminder_interval_minutes": interval_minutes})
 
     async def _update_fields(self, guild_id: int, fields: dict[str, object]) -> None:

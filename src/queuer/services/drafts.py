@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 from datetime import timedelta
+from typing import Optional
 
 from ..models import DraftPayload, QuestionDraft, utcnow
 from ..repositories import QuestionDraftRepository
@@ -12,7 +13,7 @@ class DraftService:
     def __init__(self, draft_repository: QuestionDraftRepository) -> None:
         self.draft_repository = draft_repository
 
-    async def get_active(self, guild_id: int, creator_user_id: int) -> QuestionDraft | None:
+    async def get_active(self, guild_id: int, creator_user_id: int) -> Optional[QuestionDraft]:
         return await self.draft_repository.get_active_for_creator(guild_id, creator_user_id)
 
     async def begin_or_resume(self, guild_id: int, creator_user_id: int, *, ttl_minutes: int = 60) -> QuestionDraft:
