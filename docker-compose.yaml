@@ -1,6 +1,6 @@
 services:
   question-queuer:
-    image: question-queuer:latest
+    image: queuer:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,9 +11,9 @@ services:
       - BOT_CLIENT_ID=${BOT_CLIENT_ID}
       - BOT_APPLICATION_ID=${BOT_APPLICATION_ID}
       - GUILD_ID=${GUILD_ID}
-      - ENV=${ENV}
-      - DATABASE_PATH=${DATABASE_PATH}
-      - DEFAULT_TIMEZONE=${DEFAULT_TIMEZONE}
+      - ENV=${ENV:-development}
+      - DATABASE_PATH=${DATABASE_PATH:-data/queuer.sqlite3}
+      - DEFAULT_TIMEZONE=${DEFAULT_TIMEZONE:-UTC}
     volumes:
       - ./data:/bot/data
     restart: unless-stopped
