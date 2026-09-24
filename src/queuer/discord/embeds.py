@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import traceback
+from typing import Optional
 
 import discord
 from discord import app_commands
@@ -41,7 +42,7 @@ def build_snippet_embed(
 
 
 def build_error_embed(
-    command_name: str | None,
+    command_name: Optional[str],
     error: app_commands.AppCommandError,
 ) -> discord.Embed:
     title = "Command Error"
