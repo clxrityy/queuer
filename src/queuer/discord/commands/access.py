@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import discord
 from discord import app_commands
 
@@ -47,7 +49,7 @@ async def ensure_admin_access(bot: QueuerBot, interaction: discord.Interaction) 
     raise app_commands.CheckFailure("Admin roles are not configured, so only server admins can manage QOTD configuration.")
 
 
-def collect_role_ids(*roles: discord.Role | None) -> list[int]:
+def collect_role_ids(*roles: Optional[discord.Role]) -> list[int]:
     unique_role_ids: list[int] = []
     for role in roles:
         if role is None or role.id in unique_role_ids:
