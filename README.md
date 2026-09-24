@@ -7,6 +7,8 @@ A Discord bot for queueing questions to be sent on an interval.
 1. Copy `.env.example` to `.env` and fill in the Discord values.
 2. Install dependencies:
 
+For container runs, prefer unquoted values in `.env` (for example, `GUILD_ID=1234567890`). The app now tolerates quoted values too, but plain `KEY=value` is the least surprising format across tools.
+
 ```bash
 make install
 ```
@@ -34,13 +36,21 @@ make run
 make docker-build
 ```
 
+`make docker-build` uses the local container engine directly, so it works with either Docker or Podman.
+
 1. Start the bot container:
 
 ```bash
 make docker-up
 ```
 
-SQLite data is persisted in `./data` on the host.
+> [!NOTE]
+>
+> `make docker-up`, `make docker-down`, and `make docker-logs` use direct Podman or Docker container commands instead of Compose, which avoids Podman's Docker-compatible compose socket issues.
+> 
+> On Linux bind mounts, the container is started as your host UID/GID, and Podman uses `--userns keep-id`, so the SQLite file in `./data` stays writable.
+> 
+> SQLite data is persisted in `./data` on the host.
 
 To follow logs:
 
