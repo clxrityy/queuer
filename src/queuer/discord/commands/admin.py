@@ -6,10 +6,45 @@ from typing import Optional
 import discord
 from discord import app_commands
 
+from ...scheduling import format_utc_for_display
 from ..app import QueuerBot
 from ..embeds import build_snippet_embed
 from ..views import RoleSelectionView
 from .access import ROLE_PURPOSE_CHOICES, ensure_admin_access
+
+
+def _truncate_inline(value: str, limit: int = 60) -> str:
+    cleaned = value.strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3] + "..."
+
+
+def _format_queue_item_line(
+    position: int,
+    *,
+    queue_item,
+    timezone_name: str,
+) -> str:
+    if queue_item.scheduled_for is not None:
+        schedule_label = format_utc_for_display(queue_item.scheduled_for, timezone_name)
+    else:
+        schedule_label = "default schedule"
+    prompt = _truncate_inline(queue_item.prompt_text)
+    return f"{position}. #{queue_item.id} • {queue_item.type} • {schedule_label} • {prompt}"
+
+
+def _format_removed_queue_item_details(queue_item, *, timezone_name: str) -> str:
+    lines = [
+        f"Removed queued QOTD #{queue_item.id}.",
+        f"Type: {queue_item.type}",
+        f"Prompt: {_truncate_inline(queue_item.prompt_text, limit=120)}",
+    ]
+    if queue_item.scheduled_for is not None:
+        lines.append(f"Schedule override: {format_utc_for_display(queue_item.scheduled_for, timezone_name)}")
+    else:
+        lines.append("Schedule: default daily schedule")
+    return "\n".join(lines)
 
 
 def register_admin_commands(bot: QueuerBot) -> None:
@@ -108,6 +143,68 @@ def register_admin_commands(bot: QueuerBot) -> None:
             snippet="Per-question schedule overrides will still be honored for queued items.",
             language="text",
             color=discord.Color.blurple(),
+            render_as_code_block=False,
+            field_name="Details",
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @bot.tree.command(name="qotd-queue", description="Show the currently queued QOTD items.")
+    @app_commands.guild_only()
+    async def qotd_queue(interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        await ensure_admin_access(bot, interaction)
+
+        queued_items = await bot.services.queue.list_queued(bot.config.guild_id)
+        if not queued_items:
+            embed = build_snippet_embed(
+                title="Queued QOTDs",
+                description="There are no queued questions right now.",
+                snippet="Queue is empty.",
+                language="text",
+                color=discord.Color.blurple(),
+                render_as_code_block=False,
+                field_name="Details",
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        settings = await bot.services.configuration.get_settings(bot.config.guild_id)
+        timezone_name = (settings.timezone if settings is not None else None) or bot.config.default_timezone
+        lines = [
+            _format_queue_item_line(index, queue_item=queue_item, timezone_name=timezone_name)
+            for index, queue_item in enumerate(queued_items, start=1)
+        ]
+        embed = build_snippet_embed(
+            title="Queued QOTDs",
+            description="Use `/qotd-remove queue_item_id:<id>` to remove a queued question.",
+            snippet="\n".join(lines),
+            language="text",
+            color=discord.Color.blurple(),
+            render_as_code_block=False,
+            field_name="Queue",
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @bot.tree.command(name="qotd-remove", description="Remove a queued QOTD item by ID.")
+    @app_commands.guild_only()
+    @app_commands.describe(queue_item_id="The queued QOTD ID to remove. Use `/qotd-queue` to find it.")
+    async def qotd_remove(interaction: discord.Interaction, queue_item_id: int) -> None:
+        await interaction.response.defer(ephemeral=True)
+        await ensure_admin_access(bot, interaction)
+
+        settings = await bot.services.configuration.get_settings(bot.config.guild_id)
+        timezone_name = (settings.timezone if settings is not None else None) or bot.config.default_timezone
+        try:
+            removed_item = await bot.services.queue.remove_queued_item(bot.config.guild_id, queue_item_id)
+        except ValueError as exc:
+            raise app_commands.AppCommandError(str(exc)) from exc
+
+        embed = build_snippet_embed(
+            title="Queued QOTD Removed",
+            description="The queued question was removed successfully.",
+            snippet=_format_removed_queue_item_details(removed_item, timezone_name=timezone_name),
+            language="text",
+            color=discord.Color.green(),
             render_as_code_block=False,
             field_name="Details",
         )
