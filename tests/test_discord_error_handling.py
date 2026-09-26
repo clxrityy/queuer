@@ -4,7 +4,7 @@ import unittest
 
 from discord import app_commands
 
-from queuer.discord.embeds import build_error_embed, is_expected_app_command_error
+from queuer.discord.embeds import build_error_embed, format_log_snippet, is_expected_app_command_error
 
 
 class DiscordErrorHandlingTests(unittest.TestCase):
@@ -26,6 +26,17 @@ class DiscordErrorHandlingTests(unittest.TestCase):
         error = app_commands.CheckFailure("You are not allowed to add QOTD questions.")
 
         self.assertTrue(is_expected_app_command_error(error))
+
+    def test_format_log_snippet_handles_wrapped_invoke_errors_on_python_39(self) -> None:
+        class _FakeCommand:
+            name = "qotd-draft"
+
+        original = ValueError("boom")
+        wrapped = app_commands.CommandInvokeError(_FakeCommand(), original)
+
+        snippet = format_log_snippet(wrapped)
+
+        self.assertIn("ValueError: boom", snippet)
 
 
 if __name__ == "__main__":
