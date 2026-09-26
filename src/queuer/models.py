@@ -37,6 +37,7 @@ class DraftPayload:
     reaction_options: Optional[list[str]] = None
     this_or_that_options: Optional[list[str]] = None
     target_user_id: Optional[int] = None
+    scheduled_for: Optional[str] = None
     embed: Optional[dict[str, Any]] = None
     attachments: Optional[list[str]] = None
     external_urls: Optional[list[str]] = None
@@ -64,6 +65,7 @@ class QueueItem:
     type: str
     prompt_text: str
     payload_json: str
+    scheduled_for: Optional[str]
     target_user_id: Optional[int]
     created_by_user_id: int
     approved_by_user_id: Optional[int]

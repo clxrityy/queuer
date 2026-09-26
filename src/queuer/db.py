@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS queue_items (
     type TEXT NOT NULL,
     prompt_text TEXT NOT NULL,
     payload_json TEXT NOT NULL,
+    scheduled_for TEXT,
     target_user_id INTEGER,
     created_by_user_id INTEGER NOT NULL,
     approved_by_user_id INTEGER,
@@ -135,6 +136,7 @@ class Database:
     async def initialize(self, *, guild_id: int, default_timezone: str) -> None:
         async with self.connection() as connection:
             await connection.executescript(SCHEMA_SQL)
+            await self._ensure_queue_items_columns(connection)
             await connection.execute(
                 """
                 INSERT INTO guild_settings (guild_id, timezone)
@@ -144,3 +146,10 @@ class Database:
                 (guild_id, default_timezone),
             )
             await connection.commit()
+
+    async def _ensure_queue_items_columns(self, connection: aiosqlite.Connection) -> None:
+        cursor = await connection.execute("PRAGMA table_info(queue_items)")
+        rows = await cursor.fetchall()
+        column_names = {row["name"] for row in rows}
+        if "scheduled_for" not in column_names:
+            await connection.execute("ALTER TABLE queue_items ADD COLUMN scheduled_for TEXT")
