@@ -7,7 +7,7 @@ CONTAINER_VOLUME?=$(DATA_DIR):/bot/data$(if $(filter podman,$(CONTAINER_ENGINE))
 HOST_UID?=$(shell id -u)
 HOST_GID?=$(shell id -g)
 
-.PHONY: venv install dev run check docker-build docker-up docker-down docker-logs clean
+.PHONY: venv install dev run test test-verbose check docker-build docker-up docker-down docker-logs clean
 
 venv:
 	$(PYTHON) -m venv venv && source venv/bin/activate
@@ -19,6 +19,12 @@ dev:
 
 run:
 	PYTHONPATH=src $(PYTHON) -m queuer
+
+test:
+	PYTHONPATH=src $(PYTHON) -m pytest
+
+test-verbose:
+	PYTHONPATH=src $(PYTHON) -m pytest -v
 
 check:
 	$(PYTHON) -m compileall src

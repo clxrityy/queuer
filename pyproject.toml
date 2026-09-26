@@ -11,11 +11,7 @@ readme = "README.md"
 
 version = "0.1.0"
 
-dependencies = [
-  "discord.py>=2.6.0",
-  "dotenv>=0.9.9",
-  "aiosqlite>=0.20.0",
-]
+dependencies = ["discord.py>=2.6.0", "dotenv>=0.9.9", "aiosqlite>=0.20.0"]
 
 classifiers = [
   "Programming Language :: Python :: 3.9",
@@ -23,10 +19,14 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = []
+dev = ["pytest>=8.3"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
