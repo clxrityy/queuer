@@ -26,3 +26,5 @@ htmlcov/
 *.egg
 .pyirc
 data/*
+config/*.conf
+!config/*.example.conf
