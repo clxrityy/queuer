@@ -6,6 +6,8 @@ A Discord bot for queueing questions to be sent on an interval.
 - `/qotd-set-schedule` — set the daily posting time and timezone.
 - `/qotd-disable-schedule` — disable the daily default schedule.
 - `/qotd-config` — inspect the persisted bot configuration snapshot.
+- `/qotd-queue` — inspect the currently queued QOTD items and their IDs.
+- `/qotd-remove` — remove a queued QOTD item by ID.
 - `/qotd-confirm` — enqueue a draft and optionally provide a per-question `schedule_date`, `schedule_time`, and `timezone` override.
 
 ## Setup
@@ -28,6 +30,7 @@ make dev
 ### Run
 
 The bot reads configuration from `.env` and initializes the SQLite database automatically on startup.
+Fallback webhook persona values are loaded from `config/webhook.conf`.
 
 ```bash
 make run
