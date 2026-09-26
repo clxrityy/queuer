@@ -6,7 +6,7 @@ import discord
 from discord import app_commands
 
 from ..app import QueuerBot
-from ..embeds import build_error_embed, format_log_snippet
+from ..embeds import build_error_embed, format_log_snippet, is_expected_app_command_error
 
 
 LOGGER = logging.getLogger(__name__)
@@ -26,11 +26,18 @@ def register_error_handler(bot: QueuerBot) -> None:
         error: app_commands.AppCommandError,
     ) -> None:
         command_name = interaction.command.qualified_name if interaction.command else None
-        LOGGER.error(
-            "App command error for %s\n%s",
-            command_name or "unknown",
-            format_log_snippet(error),
-        )
+        if is_expected_app_command_error(error):
+            LOGGER.warning(
+                "App command rejected for %s: %s",
+                command_name or "unknown",
+                str(error) or error.__class__.__name__,
+            )
+        else:
+            LOGGER.error(
+                "App command error for %s\n%s",
+                command_name or "unknown",
+                format_log_snippet(error),
+            )
 
         embed = build_error_embed(command_name, error)
         if interaction.response.is_done():
