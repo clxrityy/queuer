@@ -21,5 +21,5 @@ def build_service_bundle(
     return ServiceBundle(
         configuration=ConfigurationService(settings_repository, role_repository),
         drafts=DraftService(draft_repository),
-        queue=QueueService(queue_repository, draft_repository),
+        queue=QueueService(queue_repository, draft_repository, settings_repository),
     )
