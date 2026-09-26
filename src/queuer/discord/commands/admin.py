@@ -55,6 +55,64 @@ def register_admin_commands(bot: QueuerBot) -> None:
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
 
+    @bot.tree.command(name="qotd-set-schedule", description="Set the default daily QOTD posting schedule.")
+    @app_commands.guild_only()
+    @app_commands.describe(
+        time="Daily post time in HH:MM 24-hour format.",
+        timezone="IANA timezone like UTC or America/New_York. Leave empty to reuse the current one.",
+    )
+    async def qotd_set_schedule(
+        interaction: discord.Interaction,
+        time: str,
+        timezone: Optional[str] = None,
+    ) -> None:
+        await interaction.response.defer(ephemeral=True)
+        await ensure_admin_access(bot, interaction)
+
+        settings = await bot.services.configuration.get_settings(bot.config.guild_id)
+        effective_timezone = timezone or (settings.timezone if settings is not None else None) or bot.config.default_timezone
+        try:
+            await bot.services.configuration.set_schedule(
+                bot.config.guild_id,
+                time,
+                effective_timezone,
+                True,
+            )
+        except ValueError as exc:
+            raise app_commands.AppCommandError(str(exc)) from exc
+
+        embed = build_snippet_embed(
+            title="QOTD Schedule Updated",
+            description="The default daily posting schedule is now enabled.",
+            snippet=f"Daily schedule: {time} {effective_timezone}",
+            language="text",
+            color=discord.Color.blurple(),
+            render_as_code_block=False,
+            field_name="Details",
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @bot.tree.command(name="qotd-disable-schedule", description="Disable the default daily QOTD posting schedule.")
+    @app_commands.guild_only()
+    async def qotd_disable_schedule(interaction: discord.Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+        await ensure_admin_access(bot, interaction)
+
+        try:
+            await bot.services.configuration.disable_schedule(bot.config.guild_id)
+        except ValueError as exc:
+            raise app_commands.AppCommandError(str(exc)) from exc
+        embed = build_snippet_embed(
+            title="QOTD Schedule Disabled",
+            description="The default daily posting schedule was disabled.",
+            snippet="Per-question schedule overrides will still be honored for queued items.",
+            language="text",
+            color=discord.Color.blurple(),
+            render_as_code_block=False,
+            field_name="Details",
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
     @bot.tree.command(name="qotd-set-roles", description="Open an interactive role picker for a QOTD role group.")
     @app_commands.guild_only()
     @app_commands.describe(purpose="Which QOTD role group to update.")
