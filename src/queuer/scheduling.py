@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timezone
+import re
 from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -33,11 +34,19 @@ def normalize_schedule_time(value: str) -> str:
     return parse_time_string(value).strftime("%H:%M")
 
 
-def parse_utc_timestamp(value: str) -> datetime:
+def normalize_utc_timestamp(value: str) -> str:
     normalized = value.strip().replace(" ", "T")
     if normalized.endswith("Z"):
-        normalized = normalized[:-1] + "+00:00"
+        normalized = normalized[:-1]
+        if normalized.endswith("+00:00"):
+            return normalized
+        return normalized + "+00:00"
 
+    return re.sub(r"\+00:00\+00:00$", "+00:00", normalized)
+
+
+def parse_utc_timestamp(value: str) -> datetime:
+    normalized = normalize_utc_timestamp(value)
     parsed = datetime.fromisoformat(normalized)
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=UTC)
