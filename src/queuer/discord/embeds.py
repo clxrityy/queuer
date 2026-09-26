@@ -95,5 +95,8 @@ def build_error_embed(
 
 def format_log_snippet(error: app_commands.AppCommandError) -> str:
     if isinstance(error, app_commands.CommandInvokeError):
-        return "".join(traceback.format_exception(error.original))
-    return "".join(traceback.format_exception(error))
+        original = error.original
+        return "".join(
+            traceback.format_exception(type(original), original, original.__traceback__)
+        )
+    return "".join(traceback.format_exception(type(error), error, error.__traceback__))
