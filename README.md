@@ -2,6 +2,12 @@
 
 A Discord bot for queueing questions to be sent on an interval.
 
+- `/qotd-set-channel` — choose the channel where scheduled QOTDs are posted.
+- `/qotd-set-schedule` — set the daily posting time and timezone.
+- `/qotd-disable-schedule` — disable the daily default schedule.
+- `/qotd-config` — inspect the persisted bot configuration snapshot.
+- `/qotd-confirm` — enqueue a draft and optionally provide a per-question `schedule_date`, `schedule_time`, and `timezone` override.
+
 ## Setup
 
 1. Copy `.env.example` to `.env` and fill in the Discord values.
