@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Optional
 
+from ..models import GuildSettings
 from ..repositories import GuildSettingsRepository, RoleAssignmentRepository
+from ..scheduling import normalize_schedule_time, validate_timezone_name
 
 
 ROLE_PURPOSE_ADMIN = "admin"
@@ -33,15 +35,32 @@ class ConfigurationService:
             "roles": roles_by_purpose,
         }
 
+    async def get_settings(self, guild_id: int) -> Optional[GuildSettings]:
+        return await self.settings_repository.get(guild_id)
+
     async def set_qotd_channel(self, guild_id: int, channel_id: Optional[int]) -> None:
         await self.settings_repository.update_qotd_channel(guild_id, channel_id)
 
     async def set_schedule(self, guild_id: int, schedule_time: str, timezone: str, enabled: bool) -> None:
+        normalized_time = normalize_schedule_time(schedule_time)
+        validated_timezone = validate_timezone_name(timezone)
         await self.settings_repository.update_schedule(
             guild_id,
-            schedule_time=schedule_time,
-            timezone=timezone,
+            schedule_time=normalized_time,
+            timezone=validated_timezone,
             enabled=enabled,
+        )
+
+    async def disable_schedule(self, guild_id: int) -> None:
+        settings = await self.settings_repository.get(guild_id)
+        if settings is None:
+            raise ValueError(f"Unknown guild id: {guild_id}")
+        schedule_time = settings.schedule_time or "09:00"
+        await self.settings_repository.update_schedule(
+            guild_id,
+            schedule_time=normalize_schedule_time(schedule_time),
+            timezone=validate_timezone_name(settings.timezone),
+            enabled=False,
         )
 
     async def set_reminder_interval(self, guild_id: int, interval_minutes: Optional[int]) -> None:
