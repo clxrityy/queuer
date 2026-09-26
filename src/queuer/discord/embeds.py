@@ -7,6 +7,19 @@ import discord
 from discord import app_commands
 
 
+def is_expected_app_command_error(error: app_commands.AppCommandError) -> bool:
+    return type(error) is app_commands.AppCommandError or isinstance(
+        error,
+        (
+            app_commands.CommandOnCooldown,
+            app_commands.MissingPermissions,
+            app_commands.BotMissingPermissions,
+            app_commands.CheckFailure,
+            app_commands.TransformerError,
+        ),
+    )
+
+
 def truncate_snippet(snippet: str, limit: int = 900) -> str:
     if len(snippet) > limit:
         return snippet[: limit - 3] + "..."
@@ -51,6 +64,9 @@ def build_error_embed(
     if isinstance(error, app_commands.CommandOnCooldown):
         title = "Command On Cooldown"
         snippet = f"Try again in {error.retry_after:.1f} seconds."
+    elif type(error) is app_commands.AppCommandError:
+        title = "Invalid Input"
+        snippet = str(error) or "One or more command values were invalid."
     elif isinstance(error, app_commands.MissingPermissions):
         title = "Missing Permissions"
         snippet = "You do not have the permissions required to use this command."
