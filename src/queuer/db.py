@@ -137,6 +137,7 @@ class Database:
         async with self.connection() as connection:
             await connection.executescript(SCHEMA_SQL)
             await self._ensure_queue_items_columns(connection)
+            await self._repair_legacy_utc_timestamps(connection)
             await connection.execute(
                 """
                 INSERT INTO guild_settings (guild_id, timezone)
@@ -153,3 +154,21 @@ class Database:
         column_names = {row["name"] for row in rows}
         if "scheduled_for" not in column_names:
             await connection.execute("ALTER TABLE queue_items ADD COLUMN scheduled_for TEXT")
+
+    async def _repair_legacy_utc_timestamps(self, connection: aiosqlite.Connection) -> None:
+        await connection.execute(
+            """
+            UPDATE queue_items
+            SET scheduled_for = REPLACE(REPLACE(scheduled_for, '+00:00+00:00', 'Z'), '+00:00Z', 'Z')
+            WHERE scheduled_for LIKE '%+00:00+00:00'
+               OR scheduled_for LIKE '%+00:00Z'
+            """
+        )
+        await connection.execute(
+            """
+            UPDATE send_events
+            SET sent_at = REPLACE(REPLACE(sent_at, '+00:00+00:00', 'Z'), '+00:00Z', 'Z')
+            WHERE sent_at LIKE '%+00:00+00:00'
+               OR sent_at LIKE '%+00:00Z'
+            """
+        )
