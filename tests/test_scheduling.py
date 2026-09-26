@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import unittest
 
-from queuer.scheduling import is_daily_schedule_due, parse_schedule_override
+from queuer.repositories._shared import isoformat_utc
+from queuer.scheduling import is_daily_schedule_due, parse_schedule_override, parse_utc_timestamp
 
 
 class SchedulingTests(unittest.TestCase):
@@ -26,6 +27,23 @@ class SchedulingTests(unittest.TestCase):
         self.assertFalse(
             is_daily_schedule_due(now, "09:00", "America/New_York", last_sent_at=sent_after_window)
         )
+
+    def test_isoformat_utc_does_not_duplicate_utc_offset_for_aware_datetimes(self) -> None:
+        aware = datetime(2026, 9, 26, 18, 32, tzinfo=timezone.utc)
+
+        serialized = isoformat_utc(aware)
+
+        self.assertEqual("2026-09-26T18:32:00Z", serialized)
+
+    def test_parse_utc_timestamp_accepts_legacy_aware_utc_suffix(self) -> None:
+        parsed = parse_utc_timestamp("2026-09-26T18:32:00+00:00Z")
+
+        self.assertEqual(datetime(2026, 9, 26, 18, 32, tzinfo=timezone.utc), parsed)
+
+    def test_parse_utc_timestamp_accepts_duplicate_utc_offset(self) -> None:
+        parsed = parse_utc_timestamp("2026-09-26T18:32:00+00:00+00:00")
+
+        self.assertEqual(datetime(2026, 9, 26, 18, 32, tzinfo=timezone.utc), parsed)
 
 
 if __name__ == "__main__":
