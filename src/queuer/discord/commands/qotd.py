@@ -8,6 +8,7 @@ from discord import app_commands
 
 from ..app import QueuerBot
 from ..embeds import build_snippet_embed
+from ...scheduling import format_utc_for_display
 from .access import ensure_contributor_access
 
 
@@ -26,7 +27,13 @@ def parse_options(raw_options: Optional[str]) -> list[str]:
     return [option.strip() for option in normalized.split("|") if option.strip()]
 
 
-def build_draft_summary(payload: dict[str, Any]) -> str:
+def build_draft_summary(
+    payload: dict[str, Any],
+    *,
+    scheduled_for: Optional[str] = None,
+    schedule_note: Optional[str] = None,
+    timezone_name: str = "UTC",
+) -> str:
     lines = [
         f"Type: {payload.get('question_type') or 'unset'}",
         f"Prompt: {payload.get('prompt_text') or 'unset'}",
@@ -45,6 +52,11 @@ def build_draft_summary(payload: dict[str, Any]) -> str:
         lines.append(f"Target user: <@{target_user_id}>")
     else:
         lines.append("Target user: automatic selection later")
+
+    if scheduled_for is not None:
+        lines.append(f"Schedule override: {format_utc_for_display(scheduled_for, timezone_name)}")
+    elif schedule_note is not None:
+        lines.append(f"Schedule: {schedule_note}")
 
     return "\n".join(lines)
 
@@ -121,7 +133,17 @@ def register_qotd_commands(bot: QueuerBot) -> None:
 
     @bot.tree.command(name="qotd-confirm", description="Confirm your active QOTD draft and enqueue it.")
     @app_commands.guild_only()
-    async def qotd_confirm(interaction: discord.Interaction) -> None:
+    @app_commands.describe(
+        schedule_date="Optional override date in YYYY-MM-DD format.",
+        schedule_time="Optional override time in HH:MM 24-hour format.",
+        timezone="Optional IANA timezone for the override.",
+    )
+    async def qotd_confirm(
+        interaction: discord.Interaction,
+        schedule_date: Optional[str] = None,
+        schedule_time: Optional[str] = None,
+        timezone: Optional[str] = None,
+    ) -> None:
         await interaction.response.defer(ephemeral=True)
         await ensure_contributor_access(bot, interaction)
 
@@ -129,12 +151,33 @@ def register_qotd_commands(bot: QueuerBot) -> None:
         if draft is None:
             raise app_commands.AppCommandError("You do not have an active QOTD draft to confirm.")
 
-        queue_item = await bot.services.queue.confirm_draft(draft.id, interaction.user.id)
+        settings = await bot.services.configuration.get_settings(bot.config.guild_id)
+        try:
+            queue_item = await bot.services.queue.confirm_draft(
+                draft.id,
+                interaction.user.id,
+                schedule_date=schedule_date,
+                schedule_time=schedule_time,
+                timezone_name=timezone,
+                default_timezone=bot.config.default_timezone,
+            )
+        except ValueError as exc:
+            raise app_commands.AppCommandError(str(exc)) from exc
         payload = json.loads(queue_item.payload_json)
+        effective_timezone = timezone or (settings.timezone if settings is not None else None) or bot.config.default_timezone
+        if settings is not None and settings.schedule_enabled and settings.schedule_time:
+            schedule_note = f"daily at {settings.schedule_time} {settings.timezone}"
+        else:
+            schedule_note = "waiting for an admin schedule or a per-question override"
         embed = build_snippet_embed(
             title=f"Queued QOTD #{queue_item.id}",
             description=f"Your question has been queued in position {queue_item.position}.",
-            snippet=build_draft_summary(payload),
+            snippet=build_draft_summary(
+                payload,
+                scheduled_for=queue_item.scheduled_for,
+                schedule_note=schedule_note,
+                timezone_name=effective_timezone,
+            ),
             language="text",
             color=discord.Color.green(),
             render_as_code_block=False,
