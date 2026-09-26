@@ -1,17 +1,35 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
+from typing import Optional
 
 from ..models import QueueItem, utcnow
-from ..repositories import QuestionDraftRepository, QueueRepository
+from ..repositories import GuildSettingsRepository, QuestionDraftRepository, QueueRepository
+from ..scheduling import is_daily_schedule_due, parse_schedule_override, parse_utc_timestamp
 
 
 class QueueService:
-    def __init__(self, queue_repository: QueueRepository, draft_repository: QuestionDraftRepository) -> None:
+    def __init__(
+        self,
+        queue_repository: QueueRepository,
+        draft_repository: QuestionDraftRepository,
+        settings_repository: GuildSettingsRepository,
+    ) -> None:
         self.queue_repository = queue_repository
         self.draft_repository = draft_repository
+        self.settings_repository = settings_repository
 
-    async def confirm_draft(self, draft_id: int, approving_user_id: int) -> QueueItem:
+    async def confirm_draft(
+        self,
+        draft_id: int,
+        approving_user_id: int,
+        *,
+        schedule_date: Optional[str] = None,
+        schedule_time: Optional[str] = None,
+        timezone_name: Optional[str] = None,
+        default_timezone: str = "UTC",
+    ) -> QueueItem:
         draft = await self.draft_repository.get(draft_id)
         if draft is None:
             raise ValueError(f"Unknown draft id: {draft_id}")
@@ -24,6 +42,15 @@ class QueueService:
         if not question_type:
             raise ValueError("Draft is missing question_type")
 
+        settings = await self.settings_repository.get(draft.guild_id)
+        effective_timezone = timezone_name or (settings.timezone if settings is not None else None) or default_timezone
+        scheduled_for = parse_schedule_override(
+            schedule_date,
+            schedule_time,
+            effective_timezone,
+        )
+        payload["scheduled_for"] = scheduled_for.isoformat().replace("+00:00", "Z") if scheduled_for is not None else None
+
         queue_item = await self.queue_repository.create_from_draft(
             guild_id=draft.guild_id,
             draft_id=draft.id,
@@ -31,6 +58,7 @@ class QueueService:
             question_type=question_type,
             prompt_text=prompt_text,
             payload=payload,
+            scheduled_for=scheduled_for,
             target_user_id=payload.get("target_user_id"),
             approved_by_user_id=approving_user_id,
         )
@@ -45,6 +73,48 @@ class QueueService:
 
     async def list_queued(self, guild_id: int) -> list[QueueItem]:
         return await self.queue_repository.list_for_guild(guild_id, status="queued")
+
+    async def get_due_queue_item(self, guild_id: int, *, default_timezone: str) -> Optional[QueueItem]:
+        queue_item = await self.queue_repository.get_next_queued(guild_id)
+        if queue_item is None:
+            return None
+
+        now = datetime.now(timezone.utc)
+        if queue_item.scheduled_for is not None:
+            if parse_utc_timestamp(queue_item.scheduled_for) <= now:
+                return queue_item
+            return None
+
+        settings = await self.settings_repository.get(guild_id)
+        if settings is None or not settings.schedule_enabled or not settings.schedule_time:
+            return None
+
+        latest_sent_raw = await self.queue_repository.get_latest_successful_send(guild_id)
+        latest_sent = parse_utc_timestamp(latest_sent_raw) if latest_sent_raw is not None else None
+        timezone_name = settings.timezone or default_timezone
+        if is_daily_schedule_due(now, settings.schedule_time, timezone_name, last_sent_at=latest_sent):
+            return queue_item
+        return None
+
+    async def mark_sent(self, guild_id: int, queue_item_id: int, *, sent_message_id: int, sent_channel_id: int) -> None:
+        sent_at = datetime.now(timezone.utc)
+        await self.queue_repository.mark_sent(queue_item_id)
+        await self.queue_repository.record_send_event(
+            guild_id,
+            queue_item_id=queue_item_id,
+            status="sent",
+            sent_message_id=sent_message_id,
+            sent_channel_id=sent_channel_id,
+            sent_at=sent_at,
+        )
+
+    async def record_send_failure(self, guild_id: int, queue_item_id: int, *, error_message: str) -> None:
+        await self.queue_repository.record_send_event(
+            guild_id,
+            queue_item_id=queue_item_id,
+            status="failed",
+            error_message=error_message,
+        )
 
     async def edit_requires_reconfirmation(
         self,
