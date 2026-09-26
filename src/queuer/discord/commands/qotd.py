@@ -8,6 +8,7 @@ from discord import app_commands
 
 from ..app import QueuerBot
 from ..embeds import build_snippet_embed
+from ..qotd_delivery import parse_reaction_options, parse_text_options
 from ...scheduling import format_utc_for_display
 from .access import ensure_contributor_access
 
@@ -17,16 +18,6 @@ QUESTION_TYPE_CHOICES = [
     app_commands.Choice(name="Written response", value="written_response"),
     app_commands.Choice(name="This or that", value="this_or_that"),
 ]
-
-
-def parse_options(raw_options: Optional[str]) -> list[str]:
-    if raw_options is None:
-        return []
-
-    normalized = raw_options.replace("\n", "|").replace(",", "|")
-    return [option.strip() for option in normalized.split("|") if option.strip()]
-
-
 def build_draft_summary(
     payload: dict[str, Any],
     *,
@@ -79,7 +70,7 @@ def register_qotd_commands(bot: QueuerBot) -> None:
     @app_commands.describe(
         question_type="Choose the type of question to queue.",
         prompt="The question that will be asked.",
-        options="Use |, comma, or new lines between options. Required for reaction and this-or-that.",
+        options="For reaction polls, provide custom Discord emoji tokens. For this-or-that, use |, comma, or new lines.",
         target_user="Optional member to target for the question.",
     )
     @app_commands.choices(question_type=QUESTION_TYPE_CHOICES)
@@ -97,7 +88,6 @@ def register_qotd_commands(bot: QueuerBot) -> None:
         if not cleaned_prompt:
             raise app_commands.AppCommandError("Prompt cannot be empty.")
 
-        parsed_options = parse_options(options)
         payload_patch: dict[str, object] = {
             "question_type": question_type.value,
             "prompt_text": cleaned_prompt,
@@ -107,14 +97,20 @@ def register_qotd_commands(bot: QueuerBot) -> None:
         }
 
         if question_type.value == "reaction":
-            if len(parsed_options) < 2:
+            try:
+                parsed_reaction_options = parse_reaction_options(options)
+            except ValueError as exc:
+                raise app_commands.AppCommandError(str(exc)) from exc
+
+            if len(parsed_reaction_options) < 2:
                 raise app_commands.AppCommandError("Reaction questions require at least 2 options.")
-            payload_patch["reaction_options"] = parsed_options
+            payload_patch["reaction_options"] = parsed_reaction_options
         elif question_type.value == "this_or_that":
-            if len(parsed_options) != 2:
+            parsed_text_options = parse_text_options(options)
+            if len(parsed_text_options) != 2:
                 raise app_commands.AppCommandError("This-or-that questions require exactly 2 options.")
-            payload_patch["this_or_that_options"] = parsed_options
-        elif parsed_options:
+            payload_patch["this_or_that_options"] = parsed_text_options
+        elif parse_text_options(options):
             raise app_commands.AppCommandError("Written response questions do not accept options.")
 
         draft = await bot.services.drafts.begin_or_resume(bot.config.guild_id, interaction.user.id)
