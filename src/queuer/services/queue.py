@@ -74,15 +74,32 @@ class QueueService:
     async def list_queued(self, guild_id: int) -> list[QueueItem]:
         return await self.queue_repository.list_for_guild(guild_id, status="queued")
 
+    async def remove_queued_item(self, guild_id: int, queue_item_id: int) -> QueueItem:
+        queue_item = await self.queue_repository.get(queue_item_id)
+        if queue_item is None or queue_item.guild_id != guild_id:
+            raise ValueError(f"Unknown queue item id: {queue_item_id}")
+        if queue_item.status != "queued":
+            raise ValueError(f"Queue item #{queue_item_id} is no longer queued.")
+
+        deleted = await self.queue_repository.delete_queued_item(guild_id, queue_item_id)
+        if not deleted:
+            raise ValueError(f"Queue item #{queue_item_id} is no longer queued.")
+        return queue_item
+
     async def get_due_queue_item(self, guild_id: int, *, default_timezone: str) -> Optional[QueueItem]:
-        queue_item = await self.queue_repository.get_next_queued(guild_id)
-        if queue_item is None:
+        queued_items = await self.queue_repository.list_for_guild(guild_id, status="queued")
+        if not queued_items:
             return None
 
         now = datetime.now(timezone.utc)
-        if queue_item.scheduled_for is not None:
+        for queue_item in queued_items:
+            if queue_item.scheduled_for is None:
+                continue
             if parse_utc_timestamp(queue_item.scheduled_for) <= now:
                 return queue_item
+
+        queue_item = queued_items[0]
+        if queue_item.scheduled_for is not None:
             return None
 
         settings = await self.settings_repository.get(guild_id)
@@ -114,6 +131,19 @@ class QueueService:
             queue_item_id=queue_item_id,
             status="failed",
             error_message=error_message,
+        )
+
+    async def list_recent_member_selection_user_ids(self, guild_id: int, *, eligible_user_ids: list[int]) -> list[int]:
+        return await self.queue_repository.list_recent_member_selection_user_ids(
+            guild_id,
+            eligible_user_ids=eligible_user_ids,
+        )
+
+    async def record_member_selection(self, guild_id: int, *, user_id: int, queue_item_id: int) -> None:
+        await self.queue_repository.record_member_selection(
+            guild_id,
+            user_id=user_id,
+            queue_item_id=queue_item_id,
         )
 
     async def edit_requires_reconfirmation(
