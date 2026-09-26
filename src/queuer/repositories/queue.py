@@ -153,6 +153,46 @@ class QueueRepository:
             )
             await connection.commit()
 
+    async def delete_queued_item(self, guild_id: int, queue_item_id: int) -> bool:
+        async with self.database.connection() as connection:
+            cursor = await connection.execute(
+                """
+                SELECT position
+                FROM queue_items
+                WHERE guild_id = ?
+                  AND id = ?
+                  AND status = 'queued'
+                """,
+                (guild_id, queue_item_id),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return False
+
+            removed_position = int(row["position"])
+            await connection.execute(
+                """
+                DELETE FROM queue_items
+                WHERE guild_id = ?
+                  AND id = ?
+                  AND status = 'queued'
+                """,
+                (guild_id, queue_item_id),
+            )
+            await connection.execute(
+                """
+                UPDATE queue_items
+                SET position = position - 1,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE guild_id = ?
+                  AND status = 'queued'
+                  AND position > ?
+                """,
+                (guild_id, removed_position),
+            )
+            await connection.commit()
+        return True
+
     async def record_send_event(
         self,
         guild_id: int,
@@ -182,6 +222,42 @@ class QueueRepository:
                     sent_channel_id,
                     isoformat_utc(sent_at) if sent_at is not None else None,
                 ),
+            )
+            await connection.commit()
+
+    async def list_recent_member_selection_user_ids(
+        self,
+        guild_id: int,
+        *,
+        eligible_user_ids: list[int],
+    ) -> list[int]:
+        if not eligible_user_ids:
+            return []
+
+        placeholders = ", ".join("?" for _ in eligible_user_ids)
+        async with self.database.connection() as connection:
+            cursor = await connection.execute(
+                f"""
+                SELECT user_id
+                FROM member_selection_history
+                WHERE guild_id = ?
+                  AND user_id IN ({placeholders})
+                ORDER BY datetime(selected_at) DESC, id DESC
+                """,
+                [guild_id, *eligible_user_ids],
+            )
+            rows = await cursor.fetchall()
+
+        return [int(row["user_id"]) for row in rows]
+
+    async def record_member_selection(self, guild_id: int, *, user_id: int, queue_item_id: int) -> None:
+        async with self.database.connection() as connection:
+            await connection.execute(
+                """
+                INSERT INTO member_selection_history (guild_id, user_id, selected_for_queue_item_id)
+                VALUES (?, ?, ?)
+                """,
+                (guild_id, user_id, queue_item_id),
             )
             await connection.commit()
 
